@@ -1,0 +1,8 @@
+logs/
+target/
+/springboot-sample.iml
+
+## idea
+/.idea/
+
+
