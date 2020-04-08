@@ -12,7 +12,11 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.password.LdapShaPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.ldap.authentication.ad.ActiveDirectoryLdapAuthenticationProvider;
+import org.springframework.security.ldap.userdetails.LdapAuthoritiesPopulator;
+import org.springframework.security.ldap.userdetails.UserDetailsContextMapper;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
@@ -45,6 +49,10 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
     @Autowired
     private AuthenticationProvider jwtAuthenticationProvider;
 
+    @Autowired
+    @Qualifier("customUserDetailsContextMapper")
+    private UserDetailsContextMapper userDetailsContextMapper;
+
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http.formLogin().loginProcessingUrl("/api/login")
@@ -68,11 +76,39 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 
     }
 
+    @Bean
+    public ActiveDirectoryLdapAuthenticationProvider activeDirectoryLdapAuthenticationProvider() {
+
+        final ActiveDirectoryLdapAuthenticationProvider provider = new ActiveDirectoryLdapAuthenticationProvider("example.com", "ldap://localhost:1389");
+        provider.setConvertSubErrorCodesToExceptions(true);
+        provider.setUseAuthenticationRequestCredentials(true);
+        provider.setUseAuthenticationRequestCredentials(true);
+        provider.setUserDetailsContextMapper(userDetailsContextMapper);
+        return provider;
+    }
+
+
     @Override
     protected void configure(AuthenticationManagerBuilder auth) throws Exception {
-        // 使用自定义UserDetailsService
-        auth.userDetailsService(userDetailsService).passwordEncoder(passwordEncoder);
         auth.authenticationProvider(jwtAuthenticationProvider);
+
+        //jdbc authentication
+        auth.userDetailsService(userDetailsService).passwordEncoder(passwordEncoder);
+
+        //ldap authentication
+//        auth
+//            .ldapAuthentication()
+//            .userDetailsContextMapper(userDetailsContextMapper)
+//            .userDnPatterns("uid={0},ou=people")
+//            .groupSearchBase("ou=groups")
+//            .contextSource()
+//            .managerDn("cn=Directory Manager").managerPassword("password")
+//            .url("ldap://localhost:1389/dc=example,dc=com")
+//            .and()
+//            .passwordCompare()
+//            .passwordEncoder(new LdapShaPasswordEncoder())
+//            .passwordAttribute("userPassword");
+
     }
 
     JwtAuthenticationProcessingFilter jwtAuthenticationProcessingFilter() throws Exception {
@@ -80,5 +116,4 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
         jwtAuthenticationProcessingFilter.setAuthenticationManager(this.authenticationManager());
         return jwtAuthenticationProcessingFilter;
     }
-
 }
